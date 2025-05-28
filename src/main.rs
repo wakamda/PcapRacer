@@ -6,7 +6,6 @@ mod csv_output;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::fs;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -57,8 +56,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     csv_output::write_csv(output_csv, &stats_map, &locations)?;
 
     println!("分析完成，结果已保存到 {}", output_csv);
-
-    fs::remove_file(tshark_tsv)?;
 
     // 结束计时
     let duration = start_time.elapsed();

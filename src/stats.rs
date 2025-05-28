@@ -52,6 +52,29 @@ fn is_non_host_ip(ip: &Ipv4Addr) -> bool {
     last_octet == 1 || last_octet == 255
 }
 
+fn insert_domain_field(entry: &mut FlowStat, field: &str) {
+    if field.is_empty() {
+        return;
+    }
+    // 按逗号拆分，去除空白
+    let parts: Vec<_> = field
+        .split(',')
+        .map(|d| d.trim())
+        .filter(|d| !d.is_empty())
+        .collect();
+
+    if parts.is_empty() {
+        return;
+    }
+    // 如果全部相同，只插入一个
+    if parts.iter().all(|d| d == &parts[0]) {
+        entry.domains.insert(parts[0].to_string());
+    } else {
+        for domain in parts {
+            entry.domains.insert(domain.to_string());
+        }
+    }
+}
 
 pub fn aggregate_with_local_ip(
     lines: &[String],
@@ -89,11 +112,9 @@ pub fn aggregate_with_local_ip(
             entry.up_pkts += 1;
             entry.up_bytes += len;
 
-            for domain in [dns_name, http_host, ssl_sni] {
-                if !domain.is_empty() {
-                    entry.domains.insert(domain.to_string());
-                }
-            }
+            insert_domain_field(entry, dns_name);
+            insert_domain_field(entry, http_host);
+            insert_domain_field(entry, ssl_sni);
         } else if dst == local_ip {
             let entry = stats.entry(src.to_string()).or_default();
             entry.total_pkts += 1;
@@ -101,11 +122,9 @@ pub fn aggregate_with_local_ip(
             entry.down_pkts += 1;
             entry.down_bytes += len;
 
-            for domain in [dns_name, http_host, ssl_sni] {
-                if !domain.is_empty() {
-                    entry.domains.insert(domain.to_string());
-                }
-            }
+            insert_domain_field(entry, dns_name);
+            insert_domain_field(entry, http_host);
+            insert_domain_field(entry, ssl_sni);
         }
     }
     stats
