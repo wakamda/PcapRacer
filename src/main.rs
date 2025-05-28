@@ -1,16 +1,18 @@
 mod tshark;
 mod stats;
-mod domain;
-// mod geoip;
+mod location;
 mod csv_output;
 
-use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::fs;
+use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 开始计时
+    let start_time = Instant::now();
+
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
         eprintln!("用法: {} <input_pcap> <output_csv>", args[0]);
@@ -42,20 +44,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 统计流量并解析域名
     let stats_map = stats::aggregate_with_local_ip(&lines, &local_ip);
-    
 
-    let mut geoips: HashMap<String, String> = HashMap::new();
+    // 解析IP归属地
+    let ip_list: Vec<String> = stats_map.keys().cloned().collect();
+    let locations = location::query_ip_locations(
+        &ip_list,
+        100,
+        "***REMOVED***",
+        "***REMOVED***y",
+    );
 
-    for ip in stats_map.keys() {
-        // if let Some(db) = &geoip_db {
-        //     geoips.insert(ip.clone(), db.get_city(ip).unwrap_or_default());
-        // }
-    }
-
-    csv_output::write_csv(output_csv, &stats_map, &geoips)?;
+    csv_output::write_csv(output_csv, &stats_map, &locations)?;
 
     println!("分析完成，结果已保存到 {}", output_csv);
 
     fs::remove_file(tshark_tsv)?;
+
+    // 结束计时
+    let duration = start_time.elapsed();
+    println!("程序总耗时: {:.2?}", duration);
     Ok(())
 }

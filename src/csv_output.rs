@@ -7,7 +7,7 @@ use csv::Writer;
 pub fn write_csv(
     output_csv: &str,
     stats_map: &HashMap<String, FlowStat>,
-    geoips: &HashMap<String, String>,
+    locations: &HashMap<String, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::create(output_csv)?;
     let mut writer = BufWriter::new(file);
@@ -37,7 +37,7 @@ pub fn write_csv(
         "下行数据量",
     ];
 
-    for i in 0..max_domains {
+    for _i in 0..max_domains {
         header.push("业务说明");
     }
     header.push("归属地");
@@ -46,8 +46,7 @@ pub fn write_csv(
 
     // 3️⃣ 写数据行
     for (ip, stat) in sorted_stats.iter() {
-        let geo = geoips.get(ip).map(|s| s.as_str()).unwrap_or("");
-
+        
         let mut record = vec![
             ip.clone(),
             stat.total_pkts.to_string(),
@@ -71,7 +70,7 @@ pub fn write_csv(
             record.push("".to_string());
         }
 
-        record.push(geo.to_string());
+        record.push(locations.get(ip).cloned().unwrap_or_else(|| "未知".to_string()));
 
         wtr.write_record(&record)?;
     }
