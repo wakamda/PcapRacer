@@ -7,21 +7,27 @@ use csv::Writer;
 pub fn write_csv(
     output_csv: &str,
     stats_map: &HashMap<String, FlowStat>,
-    domains: &HashMap<String, String>,
     geoips: &HashMap<String, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 创建文件 + 缓冲写入器
     let file = File::create(output_csv)?;
     let mut writer = BufWriter::new(file);
 
-    // 写入 UTF-8 BOM：EF BB BF
+    // 写入 UTF-8 BOM
     writer.write_all(b"\xEF\xBB\xBF")?;
 
-    // 创建 CSV writer，基于已写入 BOM 的 writer
     let mut wtr = Writer::from_writer(writer);
 
-    // 写表头
-    wtr.write_record(&[
+    let sorted_stats = sort_stats_by_total_pkts(stats_map);
+
+    // 1️⃣ 计算最大域名数
+    let max_domains = sorted_stats
+        .iter()
+        .map(|(_, stat)| stat.domains.len())
+        .max()
+        .unwrap_or(0);
+
+    // 2️⃣ 写表头
+    let mut header = vec![
         "IP",
         "总数据包",
         "总数据量",
@@ -29,28 +35,45 @@ pub fn write_csv(
         "上行数据量",
         "下行数据包",
         "下行数据量",
-        "业务说明",
-        "归属地",
-    ])?;
+    ];
 
-    // 写内容
-    let sorted_stats = sort_stats_by_total_pkts(stats_map);
-    
+    for i in 0..max_domains {
+        header.push("业务说明");
+    }
+    header.push("归属地");
+
+    wtr.write_record(&header)?;
+
+    // 3️⃣ 写数据行
     for (ip, stat) in sorted_stats.iter() {
-        let domain = domains.get(ip).map(|s| s.as_str()).unwrap_or("");
         let geo = geoips.get(ip).map(|s| s.as_str()).unwrap_or("");
 
-        wtr.write_record(&[
-            ip,
-            &stat.total_pkts.to_string(),
-            &format_bytes(stat.total_bytes),
-            &stat.up_pkts.to_string(),
-            &format_bytes(stat.up_bytes),
-            &stat.down_pkts.to_string(),
-            &format_bytes(stat.down_bytes),
-            domain,
-            geo,
-        ])?;
+        let mut record = vec![
+            ip.clone(),
+            stat.total_pkts.to_string(),
+            format_bytes(stat.total_bytes),
+            stat.up_pkts.to_string(),
+            format_bytes(stat.up_bytes),
+            stat.down_pkts.to_string(),
+            format_bytes(stat.down_bytes),
+        ];
+
+        // 拿到所有域名并排序
+        let mut domain_list: Vec<_> = stat.domains.iter().cloned().collect();
+        domain_list.sort();
+
+        for domain in &domain_list {
+            record.push(domain.clone());
+        }
+
+        // 不足补空
+        while record.len() < 7 + max_domains {
+            record.push("".to_string());
+        }
+
+        record.push(geo.to_string());
+
+        wtr.write_record(&record)?;
     }
 
     wtr.flush()?;

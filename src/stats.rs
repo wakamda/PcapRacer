@@ -10,6 +10,7 @@ pub struct FlowStat {
     pub up_bytes: u64,
     pub down_pkts: u64,
     pub down_bytes: u64,
+    pub domains: HashSet<String>,
 }
 
 pub fn find_local_ip(lines: &[String]) -> Result<String, String> {
@@ -65,7 +66,21 @@ pub fn aggregate_with_local_ip(
         }
         let src = cols[0];
         let dst = cols[1];
+        if src == "0.0.0.0"
+        || dst == "0.0.0.0"
+        || src.ends_with(".1")
+        || dst.ends_with(".1")
+        || src.ends_with(".255")
+        || dst.ends_with(".255")
+        {
+            continue;
+        }
         let len: u64 = cols[2].parse().unwrap_or(0);
+
+        // 提取域名字段（后面可能为空）
+        let dns_name = cols.get(3).unwrap_or(&"").trim();
+        let http_host = cols.get(4).unwrap_or(&"").trim();
+        let ssl_sni = cols.get(5).unwrap_or(&"").trim();
 
         if src == local_ip {
             let entry = stats.entry(dst.to_string()).or_default();
@@ -73,12 +88,24 @@ pub fn aggregate_with_local_ip(
             entry.total_bytes += len;
             entry.up_pkts += 1;
             entry.up_bytes += len;
+
+            for domain in [dns_name, http_host, ssl_sni] {
+                if !domain.is_empty() {
+                    entry.domains.insert(domain.to_string());
+                }
+            }
         } else if dst == local_ip {
             let entry = stats.entry(src.to_string()).or_default();
             entry.total_pkts += 1;
             entry.total_bytes += len;
             entry.down_pkts += 1;
             entry.down_bytes += len;
+
+            for domain in [dns_name, http_host, ssl_sni] {
+                if !domain.is_empty() {
+                    entry.domains.insert(domain.to_string());
+                }
+            }
         }
     }
     stats

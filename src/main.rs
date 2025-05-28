@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let input_pcap = &args[1];
     let output_csv = &args[2];
-    let tshark_tsv = "temp_output.tsv";
+    let tshark_tsv = "test/temp_output.tsv";
 
     // 运行 tshark 生成 TSV
     tshark::run_tshark(input_pcap, tshark_tsv)?;
@@ -40,27 +40,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // 统计流量
+    // 统计流量并解析域名
     let stats_map = stats::aggregate_with_local_ip(&lines, &local_ip);
-
-    // 解析域名和归属地
-    let mut domains: HashMap<String, String> = HashMap::new();
     
 
     let mut geoips: HashMap<String, String> = HashMap::new();
 
     for ip in stats_map.keys() {
-        // 解析域名
-
         // if let Some(db) = &geoip_db {
         //     geoips.insert(ip.clone(), db.get_city(ip).unwrap_or_default());
         // }
     }
 
-    csv_output::write_csv(output_csv, &stats_map, &domains, &geoips)?;
+    csv_output::write_csv(output_csv, &stats_map, &geoips)?;
 
     println!("分析完成，结果已保存到 {}", output_csv);
 
-    // fs::remove_file(tshark_tsv)?;
+    fs::remove_file(tshark_tsv)?;
     Ok(())
 }
