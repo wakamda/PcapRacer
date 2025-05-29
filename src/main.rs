@@ -9,13 +9,16 @@ use std::io::{BufRead, BufReader};
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 开始计时
-    let start_time = Instant::now();
-
     let url = "***REMOVED***";
     let token = "***REMOVED***y";
 
     let args: Vec<String> = env::args().collect();
+
+    if args.len() == 2 && (args[1] == "-v" || args[1] == "--version") {
+        println!("Version: {}", env!("CARGO_PKG_VERSION"));
+        std::process::exit(0);
+    }
+    
     if args.len() == 2 && (args[1] == "-h" || args[1] == "--help") {
         print_usage();
         std::process::exit(0);
@@ -41,6 +44,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input_pcap = &args[2];
     let output_csv = &args[3];
     let tshark_tsv = "test/temp_output.tsv";
+
+    // 开始计时
+    let start_time = Instant::now();
 
     // 运行 tshark 生成 TSV
     tshark::run_tshark(input_pcap, tshark_tsv)?;
@@ -101,6 +107,7 @@ fn print_usage() {
     println!("║         <input_pcap>     要分析的 pcap 文件路径          ║");
     println!("║         <output_csv>     输出的 CSV 文件路径             ║");
     println!("║   -h, --help             显示帮助信息并退出              ║");
+    println!("║   -v, --version          显示版本                        ║");
     println!("╚══════════════════════════════════════════════════════════╝");
 }
 
