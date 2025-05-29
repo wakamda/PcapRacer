@@ -37,10 +37,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 print_usage();
                 std::process::exit(0);
             }
-            _ => {
-                eprintln!("未知参数: {}", args[1]);
-                print_usage();
-                std::process::exit(1);
+            path => {
+                // 自动判断路径类型
+                use std::path::Path;
+    
+                let input_path = Path::new(path);
+                if !input_path.exists() {
+                    eprintln!("❌ 输入路径不存在: {}", path);
+                    std::process::exit(1);
+                }
+    
+                if !check_tshark() {
+                    std::process::exit(1);
+                }
+    
+                let start_time = Instant::now();
+    
+                if input_path.is_file() {
+                    // 文件：调用 analyze_single_file
+                    analyze::analyze_single_file(path, url, token, tshark_tsv)?;
+                } else if input_path.is_dir() {
+                    // 目录：调用 analyze_directory
+                    analyze::analyze_directory(path, url, token, tshark_tsv)?;
+                } else {
+                    eprintln!("❌ 无法识别输入路径类型: {}", path);
+                    std::process::exit(1);
+                }
+    
+                let duration = start_time.elapsed();
+                println!("程序总耗时: {:.2?}", duration);
             }
         },
         3 => match args[1].as_str() {
@@ -52,9 +77,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     std::process::exit(1);
                 }
                 let start_time = Instant::now();
-                let input_pcap = &args[2];
 
-                analyze::analyze_single_file(input_pcap, url, token,tshark_tsv)?;
+                analyze::analyze_single_file(&args[2], url, token,tshark_tsv)?;
 
                 let duration = start_time.elapsed();
                 println!("程序总耗时: {:.2?}", duration);
@@ -64,9 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     std::process::exit(1);
                 }
                 let start_time = Instant::now();
-                let dir_path = &args[2];
 
-                analyze::analyze_directory(dir_path, url, token,tshark_tsv)?;
+                analyze::analyze_directory(&args[2], url, token,tshark_tsv)?;
 
                 let duration = start_time.elapsed();
                 println!("程序总耗时: {:.2?}", duration);
@@ -104,9 +127,9 @@ fn print_usage() {
     println!("║ 参数说明:                                                ║");
     println!("║   -i                                                     ║");
     println!("║         <input_ip>       对单个ip进行地理位置查询        ║");
-    println!("║   -f                                                     ║");
+    println!("║   [-f]                                                   ║");
     println!("║         <input_pcap>     要分析的 pcap 文件路径 (必需)   ║");
-    println!("║   -F                                                     ║");
+    println!("║   [-F]                                                   ║");
     println!("║         <input_Dir>     要分析的 pcap 文件夹路径 (必需)  ║");
     println!("║                      注意:此项将分析文件夹内所有pcap文件 ║");
     println!("║                                                          ║");
