@@ -75,7 +75,7 @@ pub fn query_ip_locations(
         }       
         
         // 请求完毕后，sleep 2秒，防止被限速
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 
     results
