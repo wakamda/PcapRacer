@@ -34,7 +34,7 @@ pub fn find_local_ip(lines: &[String]) -> Result<String, String> {
     }
 
     match lan_ips.len() {
-        0 => Err("未找到局域网 IP".to_string()),
+        0 => Err("❌ 未找到局域网 IP".to_string()),
         1 => Ok(lan_ips.into_iter().next().unwrap()),
         _ => {
             // 过滤只包含局域网 IP 的统计信息
@@ -62,7 +62,7 @@ pub fn find_local_ip(lines: &[String]) -> Result<String, String> {
             if top_ips.len() == 1 {
                 Ok(top_ips[0].0.clone())
             } else {
-                Err("局域网 IP 不唯一，无法自动选择".to_string())
+                Err("❌ 局域网 IP 不唯一，无法自动选择".to_string())
             }
         }
     }
@@ -108,22 +108,50 @@ pub fn aggregate_with_local_ip(
 ) -> HashMap<String, FlowStat> {
     let mut stats: HashMap<String, FlowStat> = HashMap::new();
 
-    for line in lines {
+    for (line_num, line) in lines.iter().enumerate() {
         let cols: Vec<&str> = line.split('\t').collect();
         if cols.len() < 3 {
+            eprintln!("第 {} 行格式错误，跳过: {:?}", line_num + 1, line);
             continue;
         }
         let src = cols[0];
         let dst = cols[1];
-        if src == "0.0.0.0"
-        || dst == "0.0.0.0"
-        || src.ends_with(".1")
-        || dst.ends_with(".1")
-        || src.ends_with(".255")
-        || dst.ends_with(".255")
-        {
+
+        if src.trim().is_empty() || dst.trim().is_empty() {
+            // eprintln!("第 {} 行空 IP，跳过：src='{}', dst='{}'", line_num + 1, src, dst);
             continue;
         }
+
+        let src_ip = match src.parse::<Ipv4Addr>() {
+            Ok(ip) => ip,
+            Err(e) => {
+                eprintln!("第 {} 行无法解析 src [{}]: {}", line_num + 1, src, e);
+                continue;
+            }
+        };
+
+        let dst_ip = match dst.parse::<Ipv4Addr>() {
+            Ok(ip) => ip,
+            Err(e) => {
+                eprintln!("第 {} 行无法解析 dst [{}]: {}", line_num + 1, dst, e);
+                continue;
+            }
+        };
+
+        // 过滤网关 IP
+        if src_ip.octets()[3] == 1 || dst_ip.octets()[3] == 1 {
+            continue;
+        }
+
+        if is_lan_ip(&src_ip) && is_lan_ip(&dst_ip) {
+            continue;
+        }
+    
+        // 过滤非主机 IP（环回、广播、多播等）
+        if is_non_host_ip(&src_ip) || is_non_host_ip(&dst_ip) {
+            continue;
+        }
+
         let len: u64 = cols[2].parse().unwrap_or(0);
 
         // 提取域名字段（后面可能为空）
@@ -153,5 +181,9 @@ pub fn aggregate_with_local_ip(
             insert_domain_field(entry, ssl_sni);
         }
     }
+
+    // 过滤掉 total_bytes 小于 1024 的项
+    stats.retain(|_, stat| stat.total_bytes >= 1024);
+
     stats
 }

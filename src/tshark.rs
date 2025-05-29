@@ -11,8 +11,9 @@ pub fn run_tshark(input_pcap: &str, output_tsv: &str) -> Result<(), Box<dyn std:
         .arg("-e").arg("dns.qry.name")
         .arg("-e").arg("http.host")
         .arg("-e").arg("ssl.handshake.extensions_server_name")
-        .arg("-E").arg("header=y")
+        // .arg("-E").arg("header=y")
         .arg("-E").arg("separator=\t")
+        .arg("-E").arg("occurrence=f")
         .stdout(Stdio::piped())
         .spawn()?;
 
@@ -25,7 +26,7 @@ pub fn run_tshark(input_pcap: &str, output_tsv: &str) -> Result<(), Box<dyn std:
 
     let status = child.wait()?;
     if !status.success() {
-        return Err(format!("tshark命令执行失败").into());
+        return Err(format!("❌ tshark命令执行失败").into());
     }
 
     Ok(())

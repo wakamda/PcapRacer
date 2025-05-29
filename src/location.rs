@@ -44,7 +44,7 @@ pub fn query_ip_locations(
         match client.post(&full_url).json(&payload).send() {
             Ok(resp) => {
                 if resp.status() != reqwest::StatusCode::OK {
-                    eprintln!("HTTP错误，状态码: {}", resp.status());
+                    eprintln!("❌ HTTP错误，状态码: {}", resp.status());
                     continue;
                 }
         
@@ -60,17 +60,17 @@ pub fn query_ip_locations(
                                 }
                             }
                             Err(e) => {
-                                eprintln!("反序列化 IP 列表失败: {}", e);
+                                eprintln!("❌ 反序列化 IP 列表失败: {}", e);
                             }
                         }
                     }
                     Err(e) => {
-                        eprintln!("读取响应体文本失败: {}", e);
+                        eprintln!("❌ 读取响应体文本失败: {}", e);
                     }
                 }
             }
             Err(e) => {
-                eprintln!("请求失败: {}", e);
+                eprintln!("❌ 请求失败: {}", e);
             }
         }       
         
@@ -88,14 +88,14 @@ pub fn query_single_ip(ip: &str, url: &str, token: &str) -> Option<RawIpInfo> {
     let parsed_ip: Ipv4Addr = match ip.parse() {
         Ok(IpAddr::V4(addr)) => addr,
         _ => {
-            eprintln!("无效的 IPv4 地址: {}", ip);
+            eprintln!("❌ 无效的 IPv4 地址: {}", ip);
             return None;
         }
     };
 
     // 检查是否是公网 IP
     if !is_public_ipv4(&parsed_ip) {
-        eprintln!("非公网 IPv4 地址: {}", ip);
+        eprintln!("❌ 非公网 IPv4 地址: {}", ip);
         return None;
     }
 
@@ -111,7 +111,7 @@ pub fn query_single_ip(ip: &str, url: &str, token: &str) -> Option<RawIpInfo> {
     match client.post(&full_url).json(&payload).send() {
         Ok(resp) => {
             if resp.status() != reqwest::StatusCode::OK {
-                eprintln!("HTTP错误，状态码: {}", resp.status());
+                eprintln!("❌ HTTP错误，状态码: {}", resp.status());
                 return None;
             }
 
@@ -120,19 +120,19 @@ pub fn query_single_ip(ip: &str, url: &str, token: &str) -> Option<RawIpInfo> {
                     match serde_json::from_str::<Vec<RawIpInfo>>(&text) {
                         Ok(mut ip_infos) => ip_infos.pop(),
                         Err(e) => {
-                            eprintln!("反序列化单个 IP 失败: {}", e);
+                            eprintln!("❌ 反序列化单个 IP 失败: {}", e);
                             None
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("读取响应体文本失败: {}", e);
+                    eprintln!("❌ 读取响应体文本失败: {}", e);
                     None
                 }
             }
         }
         Err(e) => {
-            eprintln!("请求失败: {}", e);
+            eprintln!("❌ 请求失败: {}", e);
             None
         }
     }

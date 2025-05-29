@@ -61,6 +61,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let input_pcap = &args[2];
+
+    // 开始计时
+    println!("🔍 开始分析文件: {}", input_pcap);
+    let start_time = Instant::now();
+
+    // 获取文件大小
+    match fs::metadata(input_pcap) {
+        Ok(meta) => {
+            let size = meta.len(); // 字节数
+            let human_readable = if size >= 1 << 30 {
+                format!("{:.2} GB", size as f64 / (1 << 30) as f64)
+            } else if size >= 1 << 20 {
+                format!("{:.2} MB", size as f64 / (1 << 20) as f64)
+            } else if size >= 1 << 10 {
+                format!("{:.2} KB", size as f64 / (1 << 10) as f64)
+            } else {
+                format!("{} B", size)
+            };
+            println!("📄 输入文件大小: {}", human_readable);
+        }
+        Err(e) => {
+            eprintln!("❌ 无法读取输入文件大小: {}", e);
+        }
+    }
+
     // 如果没指定输出文件，则默认取 input_pcap 的文件名加 .csv
     let output_csv = if args.len() == 4 {
         args[3].clone()
@@ -74,9 +99,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let tshark_tsv = "temp_output.tsv";
 
-    // 开始计时
-    let start_time = Instant::now();
-
     // 运行 tshark 生成 TSV
     tshark::run_tshark(input_pcap, tshark_tsv)?;
 
@@ -88,11 +110,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 识别局域网IP
     let local_ip = match stats::find_local_ip(&lines) {
         Ok(ip) => {
-            println!("检测到局域网IP: {}", ip);
+            println!("✅ 检测到局域网IP: {}", ip);
             ip
         }
         Err(e) => {
-            eprintln!("错误: {}", e);
+            eprintln!("❌ 错误: {}", e);
             std::process::exit(1);
         }
     };
@@ -111,7 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     csv_output::write_csv(&output_csv, &stats_map, &locations)?;
 
-    println!("分析完成，结果已保存到 {}", output_csv);
+    println!("✅ 分析完成，结果已保存到 {}", output_csv);
 
     // 结束计时
     let duration = start_time.elapsed();
