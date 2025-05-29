@@ -7,6 +7,7 @@ use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
+use std::process::Command;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let url = "***REMOVED***";
@@ -39,6 +40,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("❌ 参数错误！");
         print_usage();
         std::process::exit(1);
+    }
+
+    //判断tshark
+    if let Ok(output) = Command::new("tshark").arg("--version").output() {
+        if output.status.success() {
+            let version = String::from_utf8_lossy(&output.stdout);
+            println!("检测到 tshark 版本：{}", version.lines().next().unwrap_or("未知"));
+        }else {
+            eprintln!("❌ tshark 检查失败，请确保已安装 tshark(wireshark) 并在 PATH 中可用。");
+            std::process::exit(1);
+        }
     }
 
     let input_pcap = &args[2];
@@ -110,4 +122,3 @@ fn print_usage() {
     println!("║   -v, --version          显示版本                        ║");
     println!("╚══════════════════════════════════════════════════════════╝");
 }
-
