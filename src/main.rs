@@ -4,6 +4,7 @@ mod location;
 mod csv_output;
 
 use std::env;
+use std::path::Path;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
@@ -14,6 +15,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = "***REMOVED***y";
 
     let args: Vec<String> = env::args().collect();
+
+    if args.len() == 1 {
+        print_usage();
+        std::process::exit(0);
+    }
 
     if args.len() == 2 && (args[1] == "-v" || args[1] == "--version") {
         println!("Version: {}", env!("CARGO_PKG_VERSION"));
@@ -36,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     }
 
-    if args.len() != 4 || args[1] != "-f" {
+    if args.len() < 3 || args.len() > 4 || args[1] != "-f" {
         eprintln!("❌ 参数错误！");
         print_usage();
         std::process::exit(1);
@@ -54,7 +60,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let input_pcap = &args[2];
-    let output_csv = &args[3];
+    // 如果没指定输出文件，则默认取 input_pcap 的文件名加 .csv
+    let output_csv = if args.len() == 4 {
+        args[3].clone()
+    } else {
+        let path = Path::new(input_pcap);
+        let stem = path.file_stem().unwrap_or_default(); // abc.pcap -> abc
+        let parent = path.parent().unwrap_or_else(|| Path::new("."));
+        let mut output_path = parent.join(stem);
+        output_path.set_extension("csv");
+        output_path.to_string_lossy().to_string()
+    };
     let tshark_tsv = "test/temp_output.tsv";
 
     // 开始计时
@@ -92,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         token,
     );
 
-    csv_output::write_csv(output_csv, &stats_map, &locations)?;
+    csv_output::write_csv(&output_csv, &stats_map, &locations)?;
 
     println!("分析完成，结果已保存到 {}", output_csv);
 
@@ -109,16 +125,20 @@ fn print_usage() {
     println!("║ 用法:                                                    ║");
     // 设置宽度，左对齐
     println!("║   {:<55}║", format!("PcapRacer.exe -i <input_ip>"));
-    println!("║   {:<55}║", format!("PcapRacer.exe -f <input_pcap> <output_csv>"));
+    println!("║   {:<55}║", format!("PcapRacer.exe -f <input_pcap> [output_csv]"));
     println!("║   {:<55}║", format!("PcapRacer.exe -h | --help"));
+    println!("║   {:<55}║", format!("PcapRacer.exe -v | --version"));
     println!("║                                                          ║");
     println!("║ 参数说明:                                                ║");
     println!("║   -i                                                     ║");
     println!("║         <input_ip>       对单个ip进行地理位置查询        ║");
     println!("║   -f                                                     ║");
-    println!("║         <input_pcap>     要分析的 pcap 文件路径          ║");
-    println!("║         <output_csv>     输出的 CSV 文件路径             ║");
+    println!("║         <input_pcap>     要分析的 pcap 文件路径 (必需)   ║");
+    println!("║         [output_csv]     输出的 CSV 文件路径 (可选)      ║");
+    println!("║                         未指定则默认使用 input_pcap.csv  ║");
+    println!("║                                                          ║");
     println!("║   -h, --help             显示帮助信息并退出              ║");
+    println!("║                                                          ║");
     println!("║   -v, --version          显示版本                        ║");
     println!("╚══════════════════════════════════════════════════════════╝");
 }
