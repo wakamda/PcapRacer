@@ -8,6 +8,9 @@ pub fn write_csv(
     output_csv: &str,
     stats_map: &HashMap<String, FlowStat>,
     locations: &HashMap<String, String>,
+    total: u64,
+    up: u64,
+    down: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::create(output_csv)?;
     let mut writer = BufWriter::new(file);
@@ -74,6 +77,26 @@ pub fn write_csv(
 
         wtr.write_record(&record)?;
     }
+
+    // 4️⃣ 写总计行
+    let mut summary = vec![
+        "总计".to_string(),
+        "".to_string(),
+        format_bytes(total),
+        "".to_string(),
+        format_bytes(up),
+        "".to_string(),
+        format_bytes(down),
+    ];
+    while summary.len() < 7 + max_domains {
+        summary.push("".to_string());
+    }
+    
+    // 补上“归属地”列
+    summary.push("".to_string());
+    
+    wtr.write_record(&summary)?;
+
 
     wtr.flush()?;
     Ok(())

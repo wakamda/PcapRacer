@@ -105,8 +105,12 @@ fn insert_domain_field(entry: &mut FlowStat, field: &str) {
 pub fn aggregate_with_local_ip(
     lines: &[String],
     local_ip: &str,
-) -> HashMap<String, FlowStat> {
+) -> (HashMap<String, FlowStat>, u64, u64, u64) {
     let mut stats: HashMap<String, FlowStat> = HashMap::new();
+
+    let mut all_total_bytes: u64 = 0;
+    let mut all_total_up: u64 = 0;
+    let mut all_total_down: u64 = 0;
 
     for (line_num, line) in lines.iter().enumerate() {
         let cols: Vec<&str> = line.split('\t').collect();
@@ -169,6 +173,10 @@ pub fn aggregate_with_local_ip(
             insert_domain_field(entry, dns_name);
             insert_domain_field(entry, http_host);
             insert_domain_field(entry, ssl_sni);
+
+            // 累计总流量
+            all_total_bytes += len;
+            all_total_up += len;
         } else if dst == local_ip {
             let entry = stats.entry(src.to_string()).or_default();
             entry.total_pkts += 1;
@@ -179,11 +187,15 @@ pub fn aggregate_with_local_ip(
             insert_domain_field(entry, dns_name);
             insert_domain_field(entry, http_host);
             insert_domain_field(entry, ssl_sni);
+
+            // 累计总流量
+            all_total_bytes += len;
+            all_total_down += len;
         }
     }
 
     // 过滤掉 total_bytes 小于 1024 的项
     stats.retain(|_, stat| stat.total_bytes >= 1024);
 
-    stats
+    (stats, all_total_bytes, all_total_up, all_total_down)
 }

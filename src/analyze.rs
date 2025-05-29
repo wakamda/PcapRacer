@@ -9,25 +9,6 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 // 分析单个文件
 pub fn analyze_single_file(input_pcap: &str, url: &str, token: &str,tshark_tsv:&str) -> Result<(), Box<dyn std::error::Error>> {
-    match fs::metadata(input_pcap) {
-        Ok(meta) => {
-            let size = meta.len();
-            let human_readable = if size >= 1 << 30 {
-                format!("{:.2} GB", size as f64 / (1 << 30) as f64)
-            } else if size >= 1 << 20 {
-                format!("{:.2} MB", size as f64 / (1 << 20) as f64)
-            } else if size >= 1 << 10 {
-                format!("{:.2} KB", size as f64 / (1 << 10) as f64)
-            } else {
-                format!("{} B", size)
-            };
-            println!("📄 文件大小: {}", human_readable);
-        }
-        Err(e) => {
-            eprintln!("❌ 无法读取文件大小: {}", e);
-        }
-    }
-
     // 输出文件名
     let output_csv = {
         let path = Path::new(input_pcap);
@@ -55,12 +36,12 @@ pub fn analyze_single_file(input_pcap: &str, url: &str, token: &str,tshark_tsv:&
         }
     };
 
-    let stats_map = stats::aggregate_with_local_ip(&lines, &local_ip);
+    let (stats_map, total, up, down) = stats::aggregate_with_local_ip(&lines, &local_ip);
 
     let ip_list: Vec<String> = stats_map.keys().cloned().collect();
     let locations = location::query_ip_locations(&ip_list, 100, url, token);
 
-    csv_output::write_csv(&output_csv, &stats_map, &locations)?;
+    csv_output::write_csv(&output_csv, &stats_map, &locations, total, up, down)?;
 
     println!("✅ 分析完成，结果已保存到 {}", output_csv);
 
