@@ -14,6 +14,7 @@ pub struct FlowStat {
 }
 
 pub fn find_local_ip(lines: &[String]) -> Result<String, String> {
+    let mut ip_counts: HashMap<String, usize> = HashMap::new();
     let mut lan_ips = HashSet::new();
 
     for line in lines {
@@ -21,10 +22,12 @@ pub fn find_local_ip(lines: &[String]) -> Result<String, String> {
         if cols.len() < 3 {
             continue;
         }
+
         for ip_str in &[cols[0], cols[1]] {
             if let Ok(ipv4) = ip_str.parse::<Ipv4Addr>() {
                 if is_lan_ip(&ipv4) && !is_non_host_ip(&ipv4) && *ip_str != "0.0.0.0" {
                     lan_ips.insert(ip_str.to_string());
+                    *ip_counts.entry(ip_str.to_string()).or_insert(0) += 1;
                 }
             }
         }
@@ -34,22 +37,45 @@ pub fn find_local_ip(lines: &[String]) -> Result<String, String> {
         0 => Err("未找到局域网 IP".to_string()),
         1 => Ok(lan_ips.into_iter().next().unwrap()),
         _ => {
-            eprintln!("发现多个局域网 IP，无法自动判断本地 IP：");
-            for ip in &lan_ips {
-                eprintln!("  - {}", ip);
+            // 过滤只包含局域网 IP 的统计信息
+            let mut sorted_ips: Vec<(String, usize)> = ip_counts
+                .into_iter()
+                .filter(|(ip, _)| lan_ips.contains(ip))
+                .collect();
+
+            // 按出现次数从多到少排序
+            sorted_ips.sort_by(|a, b| b.1.cmp(&a.1));
+            
+            // // debug 输出局域网 IP 及其出现次数
+            // println!("局域网 IP 出现次数 Top 5：");
+            // for (ip, count) in sorted_ips.iter().take(5) {
+            //     println!("  - {:<15} 次数: {}", ip, count);
+            // }
+
+            // 判断最大值是否唯一
+            let top_count = sorted_ips[0].1;
+            let top_ips: Vec<&(String, usize)> = sorted_ips
+                .iter()
+                .filter(|(_, count)| *count == top_count)
+                .collect();
+
+            if top_ips.len() == 1 {
+                Ok(top_ips[0].0.clone())
+            } else {
+                Err("局域网 IP 不唯一，无法自动选择".to_string())
             }
-            Err("局域网 IP 不唯一".to_string())
         }
     }
 }
 
 fn is_lan_ip(ip: &Ipv4Addr) -> bool {
-    ip.is_private()
+    ip.octets()[0] == 10 ||
+    (ip.octets()[0] == 172 && (16..=31).contains(&ip.octets()[1])) ||
+    (ip.octets()[0] == 192 && ip.octets()[1] == 168)
 }
 
 fn is_non_host_ip(ip: &Ipv4Addr) -> bool {
-    let last_octet = ip.octets()[3];
-    last_octet == 1 || last_octet == 255
+    ip.is_loopback() || ip.is_link_local() || ip.is_broadcast() || ip.is_multicast()
 }
 
 fn insert_domain_field(entry: &mut FlowStat, field: &str) {
