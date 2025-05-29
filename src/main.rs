@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
 use std::process::Command;
+use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let url = "***REMOVED***";
@@ -71,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output_path.set_extension("csv");
         output_path.to_string_lossy().to_string()
     };
-    let tshark_tsv = "test/temp_output.tsv";
+    let tshark_tsv = "temp_output.tsv";
 
     // 开始计时
     let start_time = Instant::now();
@@ -115,6 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 结束计时
     let duration = start_time.elapsed();
     println!("程序总耗时: {:.2?}", duration);
+    fs::remove_file("temp_output.tsv")?;
     Ok(())
 }
 
