@@ -27,8 +27,7 @@ pub struct RawIpInfo {
 pub fn query_ip_locations(
     ip_list: &[String],
     batch_size: usize,
-    url: &str,
-    token: &str,
+    api_url: &str,
 ) -> HashMap<String, String> {
     let client = Client::builder()
         .timeout(Duration::from_secs(10))
@@ -39,7 +38,7 @@ pub fn query_ip_locations(
 
     for chunk in ip_list.chunks(batch_size) {
         let payload = json!({ "iplist": chunk });
-        let full_url = format!("{}?token={}", url, token);
+        let full_url = format!("{}", api_url);
 
         match client.post(&full_url).json(&payload).send() {
             Ok(resp) => {
@@ -59,18 +58,18 @@ pub fn query_ip_locations(
                                     results.insert(loc.ip, location_str);
                                 }
                             }
-                            Err(e) => {
-                                eprintln!("❌ 反序列化 IP 列表失败: {}", e);
+                            Err(_e) => {
+                                eprintln!("❌ 反序列化 IP 列表失败,请查看api: {} 是否正确",api_url);
                             }
                         }
                     }
-                    Err(e) => {
-                        eprintln!("❌ 读取响应体文本失败: {}", e);
+                    Err(_e) => {
+                        eprintln!("❌ 读取响应体文本失败,请查看api: {} 是否正确",api_url);
                     }
                 }
             }
-            Err(e) => {
-                eprintln!("❌ 请求失败: {}", e);
+            Err(_e) => {
+                eprintln!("❌ 请求失败,请查看api: {} 是否正确",api_url);
             }
         }       
         
@@ -83,7 +82,7 @@ pub fn query_ip_locations(
 
 
 /// 查询单个 IP 的位置信息，先验证 IPv4 格式和公网性
-pub fn query_single_ip(ip: &str, url: &str, token: &str) -> Option<RawIpInfo> {
+pub fn query_single_ip(ip: &str, api_url: &str) -> Option<RawIpInfo> {
     // 检查是否是合法的 IPv4
     let parsed_ip: Ipv4Addr = match ip.parse() {
         Ok(IpAddr::V4(addr)) => addr,
@@ -106,7 +105,7 @@ pub fn query_single_ip(ip: &str, url: &str, token: &str) -> Option<RawIpInfo> {
         .unwrap();
 
     let payload = json!({ "iplist": [ip] });
-    let full_url = format!("{}?token={}", url, token);
+    let full_url = format!("{}", api_url);
 
     match client.post(&full_url).json(&payload).send() {
         Ok(resp) => {

@@ -8,10 +8,19 @@ use std::env;
 use std::time::Instant;
 use std::process::Command;
 use std::fs;
+use dotenvy::dotenv;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let url = "***REMOVED***";
-    let token = "***REMOVED***y";
+    // 加载 .env 文件
+    dotenv().ok();
+
+    let api_url = env::var("API_URL").unwrap_or_else(|_| {
+        String::from("")
+    });
+
+    if api_url.is_empty() {
+        eprintln!("⚠️ API_URL 未设置或为空，位置信息将无法查询。请在 .env 文件中设置正确的 API_URL。");
+    }
 
     let tshark_tsv = "temp_output.tsv";
 
@@ -55,10 +64,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
                 if input_path.is_file() {
                     // 文件：调用 analyze_single_file
-                    analyze::analyze_single_file(path, url, token, tshark_tsv)?;
+                    analyze::analyze_single_file(path, &api_url, tshark_tsv)?;
                 } else if input_path.is_dir() {
                     // 目录：调用 analyze_directory
-                    analyze::analyze_directory(path, url, token, tshark_tsv)?;
+                    analyze::analyze_directory(path, &api_url, tshark_tsv)?;
                 } else {
                     eprintln!("❌ 无法识别输入路径类型: {}", path);
                     std::process::exit(1);
@@ -70,7 +79,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         3 => match args[1].as_str() {
             "-i" => {
-                analyze::run_analysis_one_ip(&args[2], url, token);
+                if api_url.is_empty() {
+                    eprintln!("❌ 此项必须设置API_URL环境变量，位置信息查询API不能为空！");
+                    std::process::exit(0);
+                }
+                analyze::run_analysis_one_ip(&args[2], &api_url);
             }
             "-f" => {
                 if !check_tshark() {
@@ -78,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let start_time = Instant::now();
 
-                analyze::analyze_single_file(&args[2], url, token,tshark_tsv)?;
+                analyze::analyze_single_file(&args[2], &api_url,tshark_tsv)?;
 
                 let duration = start_time.elapsed();
                 println!("程序总耗时: {:.2?}", duration);
@@ -89,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let start_time = Instant::now();
 
-                analyze::analyze_directory(&args[2], url, token,tshark_tsv)?;
+                analyze::analyze_directory(&args[2], &api_url, tshark_tsv)?;
 
                 let duration = start_time.elapsed();
                 println!("程序总耗时: {:.2?}", duration);
