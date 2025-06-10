@@ -113,7 +113,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(1);
             }
         },
-        4.. => {
+        4 => {
+            if args[1] == "-F" && args[2] == "-A" {
+                if !check_tshark() {
+                    std::process::exit(1);
+                }
+                let start_time = Instant::now();
+
+                analyze::analyze_directory_merged(&args[3], &api_url, tshark_tsv)?;
+
+                println!("程序总耗时: {:.2?}", start_time.elapsed());
+            } else {
+                eprintln!("❌ 参数错误！");
+                print_usage();
+                std::process::exit(1);
+            }
+        }
+        _ => {
             eprintln!("❌ 参数错误！");
             print_usage();
             std::process::exit(1);
@@ -133,9 +149,11 @@ fn print_usage() {
     println!("║   {:<55}║", format!("PcapRacer.exe -h | --help"));
     println!("║   {:<55}║", format!("PcapRacer.exe -v | --version"));
     println!("║   {:<55}║", format!("PcapRacer.exe -i <input_ip>"));
-    println!("║   {:<55}║", format!("PcapRacer.exe -f <input_pcap> [output_csv]"));
+    println!("║   {:<55}║", format!("PcapRacer.exe -f <input_pcap> | <input_pcap>"));
+    println!("║   {:<55}║", format!("PcapRacer.exe -F <input_Dir> | <input_Dir>"));
+    println!("║   {:<55}║", format!("PcapRacer.exe -F -A <input_Dir>"));
     println!("║                                                          ║");
-    println!("║    输出的 CSV 文件名默认为 原文件名.csv                  ║");
+    println!("║    输出的 CSV 文件名默认为 源文件/源文件名.csv           ║");
     println!("║                                                          ║");
     println!("║ 参数说明:                                                ║");
     println!("║   -i                                                     ║");
@@ -144,6 +162,9 @@ fn print_usage() {
     println!("║         <input_pcap>     要分析的 pcap 文件路径 (必需)   ║");
     println!("║   [-F]                                                   ║");
     println!("║         <input_Dir>     要分析的 pcap 文件夹路径 (必需)  ║");
+    println!("║         -A <input_Dir>  要分析的 pcap 文件夹路径 (必需)  ║");
+    println!("║                         并将结果汇总成一个文件           ║");
+    println!("║                                                          ║");
     println!("║                      注意:此项将分析文件夹内所有pcap文件 ║");
     println!("║                                                          ║");
     println!("║   -h, --help             显示帮助信息并退出              ║");
