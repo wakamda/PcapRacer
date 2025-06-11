@@ -46,9 +46,12 @@ PcapRacer.exe --version
 # 查询 IP 地理位置
 PcapRacer.exe -i <input_ip>
 
-# 分析单个 pcap 文件，输出为同名 CSV 文件
-PcapRacer.exe -f <input_pcap> [output_csv]
+# 分析单个 pcap 文件，默认输出为同名 CSV 文件
+PcapRacer.exe -f <input_pcap>
 
 # 分析指定目录中的所有 pcap 文件
 PcapRacer.exe -F <input_directory>
+
+# 分析指定目录中的所有 pcap 文件并汇总，默认输出为同文件名 CSV 文件
+PcapRacer.exe -F -A <input_directory>
 ```
