@@ -8,6 +8,7 @@ use std::result::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use crate::stats::FlowStat;
+use std::path::PathBuf;
 
 pub fn parse_and_aggregate(
     input_pcap: &str,
@@ -139,14 +140,7 @@ pub fn analyze_directory_merged(
     }
 
     // 输出文件名
-    let output_csv = {
-        let path = Path::new(dir_path);
-        let parent = path.parent().unwrap_or_else(|| Path::new("."));
-        let dir_name = path.file_name().unwrap_or_default(); // 获取最后一级目录名
-        let mut output_path = parent.join(dir_name);
-        output_path.set_extension("csv"); // 设置为 .csv
-        output_path.to_string_lossy().to_string()
-    };
+    let output_csv = get_output_csv_path(dir_path);
 
     let files: Vec<_> = fs::read_dir(path)?
         .filter_map(|entry| {
@@ -212,7 +206,7 @@ pub fn analyze_directory_merged(
         let ip_list: Vec<String> = global_stats_map.keys().cloned().collect();
         let locations = location::query_ip_locations(&ip_list, 100, api_url);
 
-        csv_output::write_csv(&output_csv, &global_stats_map, &locations, total_all, up_all, down_all)?;
+        csv_output::write_csv(&output_csv, &global_stats_map, &locations, total_all, up_all, down_all).unwrap();
         println!("✅ 所有文件分析完成，结果已保存到 {}", &output_csv);
     }
 
@@ -229,4 +223,21 @@ pub fn run_analysis_one_ip(args: &String, api_url: &str) {
         println!("未能查询到该 IP 的归属信息");
     }
     std::process::exit(0);
+}
+
+//获取绝对文件夹路径
+fn get_output_csv_path(dir_path: &str) -> String {
+    // 将输入路径转为绝对路径
+    let abs_path = fs::canonicalize(dir_path).unwrap_or_else(|_| PathBuf::from(dir_path));
+
+    // 获取目录名（即最后一级目录）
+    let dir_name = abs_path.file_name()
+        .or_else(|| abs_path.components().last().map(|c| c.as_os_str()))
+        .unwrap_or_else(|| std::ffi::OsStr::new("output"));
+
+    // 构造输出路径（在当前目录下生成 dir_name.csv）
+    let mut output_path = abs_path.join(dir_name);
+    output_path.set_extension("csv");
+
+    output_path.to_string_lossy().to_string()
 }

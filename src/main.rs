@@ -8,11 +8,11 @@ use std::env;
 use std::time::Instant;
 use std::process::Command;
 use std::fs;
-use dotenvy::dotenv;
+use dotenvy::from_path;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 加载 .env 文件
-    dotenv().ok();
+    load_env_from_exe_dir();
 
     let api_url = env::var("API_URL").unwrap_or_else(|_| {
         String::from("")
@@ -189,6 +189,16 @@ fn check_tshark() -> bool {
         Err(_) => {
             eprintln!("❌ 无法执行 tshark，请确保已安装 tshark(wireshark) 并在 PATH 中可用。");
             false
+        }
+    }
+}
+
+//导入env文件
+fn load_env_from_exe_dir() {
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let env_path = exe_dir.join(".env");
+            let _ = from_path(&env_path);
         }
     }
 }
