@@ -54,4 +54,8 @@ PcapRacer.exe -F <input_directory>
 
 # 分析指定目录中的所有 pcap 文件并汇总，默认输出为同文件名 CSV 文件
 PcapRacer.exe -F -A <input_directory>
+
+# # 分析指定目录中的所有 pcap 文件并汇总，默认输出为同文件名 CSV 文件，并过滤出关键字
+PcapRacer.exe -F -A <input_directory> -c <company>
+
 ```
