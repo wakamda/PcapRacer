@@ -105,6 +105,7 @@ fn insert_domain_field(entry: &mut FlowStat, field: &str) {
 pub fn aggregate_with_local_ip(
     lines: &[String],
     local_ip: &str,
+    company: Option<&str>,
 ) -> (HashMap<String, FlowStat>, u64, u64, u64) {
     let mut stats: HashMap<String, FlowStat> = HashMap::new();
 
@@ -197,5 +198,14 @@ pub fn aggregate_with_local_ip(
     // 过滤掉 total_bytes 小于 1024 的项
     stats.retain(|_, stat| stat.total_bytes >= 1024);
 
+    // 最后再根据公司关键字过滤
+    if let Some(keyword) = company {
+        let keyword_lower = keyword.to_lowercase();
+        stats.retain(|_ip, stat| {
+            stat.domains.iter()
+                .any(|domain| domain.to_lowercase().contains(&keyword_lower))
+        });
+    }
+    
     (stats, all_total_bytes, all_total_up, all_total_down)
 }

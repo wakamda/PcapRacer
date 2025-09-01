@@ -24,7 +24,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tshark_tsv = "temp_output.tsv";
 
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
+    // 解析 -c 参数（可选）
+    let mut company: Option<String> = None;
+    if let Some(pos) = args.iter().position(|a| a == "-c") {
+        if pos + 1 < args.len() {
+            company = Some(args[pos + 1].clone());
+            // 移除 -c 和关键字，防止干扰 argc 逻辑
+            args.drain(pos..=pos+1);
+        } else {
+            eprintln!("❌ -c 参数后需要一个字符串");
+            std::process::exit(1);
+        }
+    }
+
     let argc = args.len();
 
     match argc {
@@ -64,10 +77,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
                 if input_path.is_file() {
                     // 文件：调用 analyze_single_file
-                    analyze::analyze_single_file(path, &api_url, tshark_tsv)?;
+                    analyze::analyze_single_file(path, &api_url, tshark_tsv,company.as_deref())?;
                 } else if input_path.is_dir() {
                     // 目录：调用 analyze_directory
-                    analyze::analyze_directory(path, &api_url, tshark_tsv)?;
+                    analyze::analyze_directory(path, &api_url, tshark_tsv,company.as_deref())?;
                 } else {
                     eprintln!("❌ 无法识别输入路径类型: {}", path);
                     std::process::exit(1);
@@ -91,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let start_time = Instant::now();
 
-                analyze::analyze_single_file(&args[2], &api_url,tshark_tsv)?;
+                analyze::analyze_single_file(&args[2], &api_url,tshark_tsv,company.as_deref())?;
 
                 let duration = start_time.elapsed();
                 println!("程序总耗时: {:.2?}", duration);
@@ -102,7 +115,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let start_time = Instant::now();
 
-                analyze::analyze_directory(&args[2], &api_url, tshark_tsv)?;
+                analyze::analyze_directory(&args[2], &api_url, tshark_tsv,company.as_deref())?;
 
                 let duration = start_time.elapsed();
                 println!("程序总耗时: {:.2?}", duration);
@@ -120,7 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 let start_time = Instant::now();
 
-                analyze::analyze_directory_merged(&args[3], &api_url, tshark_tsv)?;
+                analyze::analyze_directory_merged(&args[3], &api_url, tshark_tsv,company.as_deref())?;
 
                 println!("程序总耗时: {:.2?}", start_time.elapsed());
             } else {
@@ -164,6 +177,8 @@ fn print_usage() {
     println!("║         <input_Dir>     要分析的 pcap 文件夹路径 (必需)  ║");
     println!("║         -A <input_Dir>  要分析的 pcap 文件夹路径 (必需)  ║");
     println!("║                         并将结果汇总成一个文件           ║");
+    println!("║   [-c]                                                   ║");
+    println!("║         <company>       仅保留域名中包含company的行      ║");
     println!("║                                                          ║");
     println!("║                      注意:此项将分析文件夹内所有pcap文件 ║");
     println!("║                                                          ║");

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 pub fn parse_and_aggregate(
     input_pcap: &str,
     tshark_tsv: &str,
+    company: Option<&str>,
 ) -> Result<(HashMap<String, FlowStat>, u64, u64, u64, String), Box<dyn std::error::Error>> {
     tshark::run_tshark(input_pcap, tshark_tsv)?;
 
@@ -31,13 +32,13 @@ pub fn parse_and_aggregate(
         }
     };
 
-    let (stats_map, total, up, down) = stats::aggregate_with_local_ip(&lines, &local_ip);
+    let (stats_map, total, up, down) = stats::aggregate_with_local_ip(&lines, &local_ip,company);
     Ok((stats_map, total, up, down, local_ip))
 }
 
 
 // 分析单个文件
-pub fn analyze_single_file(input_pcap: &str, api_url: &str, tshark_tsv:&str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn analyze_single_file(input_pcap: &str, api_url: &str, tshark_tsv:&str,company: Option<&str>,) -> Result<(), Box<dyn std::error::Error>> {
     // 输出文件名
     let output_csv = {
         let path = Path::new(input_pcap);
@@ -67,7 +68,7 @@ pub fn analyze_single_file(input_pcap: &str, api_url: &str, tshark_tsv:&str) -> 
         }
     };
 
-    let (stats_map, total, up, down) = stats::aggregate_with_local_ip(&lines, &local_ip);
+    let (stats_map, total, up, down) = stats::aggregate_with_local_ip(&lines, &local_ip,company);
 
     if !api_url.is_empty() {
         let ip_list: Vec<String> = stats_map.keys().cloned().collect();
@@ -82,7 +83,7 @@ pub fn analyze_single_file(input_pcap: &str, api_url: &str, tshark_tsv:&str) -> 
 }
 
 // 分析目录中所有 pcap 和 pcapng 文件
-pub fn analyze_directory(dir_path: &str, api_url: &str, tshark_tsv:&str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn analyze_directory(dir_path: &str, api_url: &str, tshark_tsv:&str,company: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new(dir_path);
     if !path.is_dir() {
         eprintln!("❌ {} 不是一个目录", dir_path);
@@ -120,7 +121,7 @@ pub fn analyze_directory(dir_path: &str, api_url: &str, tshark_tsv:&str) -> Resu
 
     for file_path in files {
         pb.set_message(format!("分析文件: {}", file_path.display()));
-        analyze_single_file(file_path.to_str().unwrap(), api_url, tshark_tsv)?;
+        analyze_single_file(file_path.to_str().unwrap(), api_url, tshark_tsv,company)?;
         pb.inc(1);
     }
 
@@ -132,6 +133,7 @@ pub fn analyze_directory_merged(
     dir_path: &str,
     api_url: &str,
     tshark_tsv: &str,
+    company: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let path = Path::new(dir_path);
     if !path.is_dir() {
@@ -178,7 +180,7 @@ pub fn analyze_directory_merged(
     for file_path in files {
         pb.set_message(format!("分析文件: {}", file_path.display()));
         let (stats_map, total, up, down, _local_ip) =
-            parse_and_aggregate(file_path.to_str().unwrap(), tshark_tsv)?;
+            parse_and_aggregate(file_path.to_str().unwrap(), tshark_tsv,company)?;
 
         // 合并当前 stats_map 到 global_stats_map
         for (ip, stat) in stats_map {
