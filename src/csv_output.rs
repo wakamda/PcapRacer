@@ -20,7 +20,7 @@ pub fn write_csv(
 
     let mut wtr = Writer::from_writer(writer);
 
-    let sorted_stats = sort_stats_by_total_pkts(stats_map);
+    let sorted_stats = sort_stats_by_up_bytes(stats_map);
 
     // 1️⃣ 计算最大域名数
     let max_domains = sorted_stats
@@ -33,10 +33,13 @@ pub fn write_csv(
     let mut header = vec![
         "IP",
         "总数据包",
+        "总字节数",
         "总数据量",
         "上行数据包",
+        "上行字节数",
         "上行数据量",
         "下行数据包",
+        "下行字节数",
         "下行数据量",
     ];
 
@@ -53,10 +56,13 @@ pub fn write_csv(
         let mut record = vec![
             ip.clone(),
             stat.total_pkts.to_string(),
+            stat.total_bytes.to_string(),
             format_bytes(stat.total_bytes),
             stat.up_pkts.to_string(),
+            stat.up_bytes.to_string(),
             format_bytes(stat.up_bytes),
             stat.down_pkts.to_string(),
+            stat.down_bytes.to_string(),
             format_bytes(stat.down_bytes),
         ];
 
@@ -69,7 +75,7 @@ pub fn write_csv(
         }
 
         // 不足补空
-        while record.len() < 7 + max_domains {
+        while record.len() < 10 + max_domains {
             record.push("".to_string());
         }
 
@@ -88,7 +94,7 @@ pub fn write_csv(
         "".to_string(),
         format_bytes(down),
     ];
-    while summary.len() < 7 + max_domains {
+    while summary.len() < 10 + max_domains {
         summary.push("".to_string());
     }
     
@@ -118,7 +124,7 @@ pub fn format_bytes(bytes: u64) -> String {
     }
 }
 
-pub fn sort_stats_by_total_pkts(
+pub fn sort_stats_by_up_bytes(
     stats: &HashMap<String, FlowStat>,
 ) -> Vec<(String, FlowStat)> {
     let mut vec: Vec<(String, FlowStat)> = stats
@@ -126,7 +132,7 @@ pub fn sort_stats_by_total_pkts(
         .map(|(ip, stat)| (ip.clone(), stat.clone()))
         .collect();
 
-    vec.sort_by(|a, b| b.1.total_pkts.cmp(&a.1.total_pkts)); // 降序
+    vec.sort_by(|a, b| b.1.up_bytes.cmp(&a.1.up_bytes)); // 降序
 
     vec
 }
